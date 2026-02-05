@@ -78,27 +78,6 @@ export default function ComingSoon() {
             <div className="separator">:</div>
             <TimeUnit value={timeLeft.seconds} label="Seconds" delay={0.3} />
           </div>
-
-          <div className="cta-section">
-            <button className="notify-btn">Notify Me</button>
-            <input
-              type="email"
-              placeholder="Enter your email"
-              className="email-input"
-            />
-          </div>
-
-          <div className="social-links">
-            <a href="#" className="social-icon">
-              Twitter
-            </a>
-            <a href="#" className="social-icon">
-              LinkedIn
-            </a>
-            <a href="#" className="social-icon">
-              Instagram
-            </a>
-          </div>
         </div>
 
         <div className="floating-elements">
