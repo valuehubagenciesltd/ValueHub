@@ -17,7 +17,6 @@ export default function ComingSoon() {
   });
 
   useEffect(() => {
-    // Calculate the target date (12 days from now)
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + 12);
 
