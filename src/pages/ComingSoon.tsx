@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { CSSProperties } from 'react';
 import '../styles/ComingSoon.css';
 
 interface TimeLeft {
@@ -9,32 +10,28 @@ interface TimeLeft {
 }
 
 export default function ComingSoon() {
-  const [timeLeft, setTimeLeft] = useState<TimeLeft>({
-    days: 13,
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-  });
+  const targetDate = new Date('2026-03-10T00:00:00');
+
+  const calculateTimeLeft = (): TimeLeft => {
+    const difference = targetDate.getTime() - Date.now();
+
+    if (difference <= 0) {
+      return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+    }
+
+    return {
+      days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+      minutes: Math.floor((difference / (1000 * 60)) % 60),
+      seconds: Math.floor((difference / 1000) % 60),
+    };
+  };
+
+  const [timeLeft, setTimeLeft] = useState<TimeLeft>(calculateTimeLeft());
 
   useEffect(() => {
-    const targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + 12);
-
     const timer = setInterval(() => {
-      const now = new Date();
-      const difference = targetDate.getTime() - now.getTime();
-
-      if (difference > 0) {
-        const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
-        const minutes = Math.floor((difference / 1000 / 60) % 60);
-        const seconds = Math.floor((difference / 1000) % 60);
-
-        setTimeLeft({ days, hours, minutes, seconds });
-      } else {
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-        clearInterval(timer);
-      }
+      setTimeLeft(calculateTimeLeft());
     }, 1000);
 
     return () => clearInterval(timer);
@@ -49,8 +46,13 @@ export default function ComingSoon() {
     label: string;
     delay: number;
   }) => (
-    <div className="time-unit" style={{'--delay': `${delay}s`} as React.CSSProperties}>
-      <div className="time-value">{String(value).padStart(2, '0')}</div>
+    <div
+      className="time-unit"
+      style={{ '--delay': `${delay}s` } as CSSProperties}
+    >
+      <div className="time-value">
+        {String(value).padStart(2, '0')}
+      </div>
       <div className="time-label">{label}</div>
     </div>
   );
