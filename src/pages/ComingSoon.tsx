@@ -9,11 +9,23 @@ interface TimeLeft {
   seconds: number;
 }
 
-export default function ComingSoon() {
-  const THIRTEEN_DAYS_MS = 13 * 24 * 60 * 60 * 1000;
+const THIRTEEN_DAYS_MS = 13 * 24 * 60 * 60 * 1000;
+const STORAGE_KEY = 'valuehub-launch-date';
 
-  // Lock target date once
-  const targetDateRef = useRef<number>(Date.now() + THIRTEEN_DAYS_MS);
+export default function ComingSoon() {
+  const getOrCreateTargetDate = (): number => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+
+    if (stored) {
+      return Number(stored);
+    }
+
+    const newTarget = Date.now() + THIRTEEN_DAYS_MS;
+    localStorage.setItem(STORAGE_KEY, String(newTarget));
+    return newTarget;
+  };
+
+  const targetDateRef = useRef<number>(getOrCreateTargetDate());
 
   const calculateTimeLeft = (): TimeLeft => {
     const difference = targetDateRef.current - Date.now();
