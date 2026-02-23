@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import '../styles/ComingSoon.css';
 
@@ -12,10 +12,11 @@ interface TimeLeft {
 export default function ComingSoon() {
   const THIRTEEN_DAYS_MS = 13 * 24 * 60 * 60 * 1000;
 
-  const targetDate = new Date(Date.now() + THIRTEEN_DAYS_MS);
+  // Lock target date once
+  const targetDateRef = useRef<number>(Date.now() + THIRTEEN_DAYS_MS);
 
   const calculateTimeLeft = (): TimeLeft => {
-    const difference = targetDate.getTime() - Date.now();
+    const difference = targetDateRef.current - Date.now();
 
     if (difference <= 0) {
       return { days: 0, hours: 0, minutes: 0, seconds: 0 };
@@ -60,11 +61,36 @@ export default function ComingSoon() {
   );
 
   return (
-    <div className="countdown">
-      <TimeUnit value={timeLeft.days} label="Days" delay={0} />
-      <TimeUnit value={timeLeft.hours} label="Hours" delay={0.1} />
-      <TimeUnit value={timeLeft.minutes} label="Minutes" delay={0.2} />
-      <TimeUnit value={timeLeft.seconds} label="Seconds" delay={0.3} />
+    <div className="coming-soon-container">
+      <div className="content-wrapper">
+        <div className="animated-background"></div>
+
+        <div className="content">
+          <h1 className="title">ValueHub</h1>
+          <h2 className="subtitle">Coming Soon</h2>
+
+          <p className="description">
+            We're building something amazing for you. Get ready for the launch!
+          </p>
+
+          <div className="countdown">
+            <TimeUnit value={timeLeft.days} label="Days" delay={0} />
+            <div className="separator">:</div>
+            <TimeUnit value={timeLeft.hours} label="Hours" delay={0.1} />
+            <div className="separator">:</div>
+            <TimeUnit value={timeLeft.minutes} label="Minutes" delay={0.2} />
+            <div className="separator">:</div>
+            <TimeUnit value={timeLeft.seconds} label="Seconds" delay={0.3} />
+          </div>
+        </div>
+
+        <div className="floating-elements">
+          <div className="float-item float-1"></div>
+          <div className="float-item float-2"></div>
+          <div className="float-item float-3"></div>
+          <div className="float-item float-4"></div>
+        </div>
+      </div>
     </div>
   );
 }
