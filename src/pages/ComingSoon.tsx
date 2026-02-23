@@ -10,7 +10,7 @@ interface TimeLeft {
 
 export default function ComingSoon() {
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({
-    days: 12,
+    days: 13,
     hours: 0,
     minutes: 0,
     seconds: 0,
