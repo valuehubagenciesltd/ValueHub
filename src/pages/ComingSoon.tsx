@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
-import type { CSSProperties } from 'react';
+import { useState, useEffect } from 'react';
 import '../styles/ComingSoon.css';
 
 interface TimeLeft {
@@ -9,26 +8,12 @@ interface TimeLeft {
   seconds: number;
 }
 
-const THIRTEEN_DAYS_MS = 13 * 24 * 60 * 60 * 1000;
-const STORAGE_KEY = 'valuehub-launch-date';
+// 🔴 SET YOUR REAL DEADLINE HERE
+const DEADLINE = new Date('2026-03-08T00:00:00');
 
 export default function ComingSoon() {
-  const getOrCreateTargetDate = (): number => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-
-    if (stored) {
-      return Number(stored);
-    }
-
-    const newTarget = Date.now() + THIRTEEN_DAYS_MS;
-    localStorage.setItem(STORAGE_KEY, String(newTarget));
-    return newTarget;
-  };
-
-  const targetDateRef = useRef<number>(getOrCreateTargetDate());
-
   const calculateTimeLeft = (): TimeLeft => {
-    const difference = targetDateRef.current - Date.now();
+    const difference = DEADLINE.getTime() - Date.now();
 
     if (difference <= 0) {
       return { days: 0, hours: 0, minutes: 0, seconds: 0 };
@@ -52,31 +37,9 @@ export default function ComingSoon() {
     return () => clearInterval(timer);
   }, []);
 
-  const TimeUnit = ({
-    value,
-    label,
-    delay,
-  }: {
-    value: number;
-    label: string;
-    delay: number;
-  }) => (
-    <div
-      className="time-unit"
-      style={{ '--delay': `${delay}s` } as CSSProperties}
-    >
-      <div className="time-value">
-        {String(value).padStart(2, '0')}
-      </div>
-      <div className="time-label">{label}</div>
-    </div>
-  );
-
   return (
     <div className="coming-soon-container">
       <div className="content-wrapper">
-        <div className="animated-background"></div>
-
         <div className="content">
           <h1 className="title">ValueHub</h1>
           <h2 className="subtitle">Coming Soon</h2>
@@ -85,22 +48,32 @@ export default function ComingSoon() {
             We're building something amazing for you. Get ready for the launch!
           </p>
 
-          <div className="countdown">
-            <TimeUnit value={timeLeft.days} label="Days" delay={0} />
-            <div className="separator">:</div>
-            <TimeUnit value={timeLeft.hours} label="Hours" delay={0.1} />
-            <div className="separator">:</div>
-            <TimeUnit value={timeLeft.minutes} label="Minutes" delay={0.2} />
-            <div className="separator">:</div>
-            <TimeUnit value={timeLeft.seconds} label="Seconds" delay={0.3} />
-          </div>
-        </div>
+          <p className="deadline">
+            <strong>Date ya mwisho:</strong>{' '}
+            {DEADLINE.toLocaleDateString()}
+          </p>
 
-        <div className="floating-elements">
-          <div className="float-item float-1"></div>
-          <div className="float-item float-2"></div>
-          <div className="float-item float-3"></div>
-          <div className="float-item float-4"></div>
+          <div className="countdown">
+            <div className="time-box">
+              <div>{String(timeLeft.days).padStart(2, '0')}</div>
+              <span>Days</span>
+            </div>
+
+            <div className="time-box">
+              <div>{String(timeLeft.hours).padStart(2, '0')}</div>
+              <span>Hours</span>
+            </div>
+
+            <div className="time-box">
+              <div>{String(timeLeft.minutes).padStart(2, '0')}</div>
+              <span>Minutes</span>
+            </div>
+
+            <div className="time-box">
+              <div>{String(timeLeft.seconds).padStart(2, '0')}</div>
+              <span>Seconds</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
