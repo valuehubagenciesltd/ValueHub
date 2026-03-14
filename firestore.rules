@@ -1,0 +1,89 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: true if the request is from the app's admin (chief) or support (dev)
+    function isAdmin() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['chief', 'dev'];
+    }
+
+    function isChief() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'chief';
+    }
+
+    // ----- users -----
+    // Read: own doc, or admin; also need unauthenticated read for signup (email/username/referrer checks)
+    // Restricting unauthenticated to specific fields is not practical, so we allow read for availability checks
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update, delete: if request.auth != null && (request.auth.uid == userId || isChief());
+    }
+
+    // ----- transactions -----
+    // Read: own transactions only, or chief (admin dashboard)
+    match /transactions/{txId} {
+      allow read: if request.auth != null
+        && (resource.data.userId == request.auth.uid || isChief());
+      allow create: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // ----- withdrawal_requests -----
+    match /withdrawal_requests/{reqId} {
+      allow read: if request.auth != null
+        && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && isChief();
+      allow delete: if false;
+    }
+
+    // ----- support_tickets -----
+    match /support_tickets/{ticketId} {
+      allow read: if request.auth != null
+        && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if false;
+    }
+
+    // ----- announcements -----
+    match /announcements/{annId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && isAdmin();
+    }
+
+    // ----- pending_payments (STK / signup flow; created by Cloud Functions) -----
+    // Client reads by doc id during signup (user not authenticated yet); client may delete on cleanup
+    match /pending_payments/{docId} {
+      allow read: if true;
+      allow create, update: if false;
+      allow delete: if true;
+    }
+
+    // ----- pending_registrations (signup flow; client creates before STK) -----
+    match /pending_registrations/{docId} {
+      allow read, create, delete: if true;
+      allow update: if true;
+    }
+
+    // ----- config (backend / Cloud Functions only from client perspective) -----
+    match /config/{docId} {
+      allow read, write: if false;
+    }
+
+    // ----- Backend-only collections (STK jobs, manual pay refs, password reset) -----
+    match /stk_queries/{docId} {
+      allow read, write: if false;
+    }
+    match /manual_pay_refs/{docId} {
+      allow read, write: if false;
+    }
+    match /password_reset_codes/{docId} {
+      allow read, write: if false;
+    }
+  }
+}

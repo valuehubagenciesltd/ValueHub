@@ -1,0 +1,7 @@
+{
+  "name": "Valuehub",
+  "description": "A premium multi-level referral and earning platform featuring a structured reward system, interactive tasks like spinning and surveys, and integrated M-Pesa simulated payments.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
