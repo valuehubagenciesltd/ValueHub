@@ -3,11 +3,10 @@ export const APP_NAME = "Valuehub";
 export const MIN_WITHDRAWAL = 380;
 export const WITHDRAWAL_TRANSACTION_FEE = 10;  
 export const WITHDRAWAL_MAINTENANCE_FEE = 70;  
-export const ENTRY_FEE = 25;
-export const REFERRAL_BONUS_L1 = 15;
-export const REFERRAL_BONUS_L2 = 5;
+export const ENTRY_FEE = 250;
+export const REFERRAL_BONUS_L1 = 150;
+export const REFERRAL_BONUS_L2 = 50;
 
-/** Map DB role to frontend display label (DB stays chief/user/dev). */
 export function getRoleDisplayLabel(role?: string): string {
   if (role === 'chief') return 'Admin';
   if (role === 'user') return 'Freelancer';

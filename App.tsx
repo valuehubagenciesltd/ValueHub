@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import * as ReactRouterDOM from 'react-router-dom';
-const { HashRouter, Routes, Route, Navigate } = ReactRouterDOM as any;
+const { HashRouter, Routes, Route, Navigate, useNavigate } = ReactRouterDOM as any;
 import { auth, db, onAuthStateChanged, signOut } from './firebase';
 import * as fbFirestore from 'firebase/firestore';
 const { doc, onSnapshot, updateDoc, collection, addDoc, increment, query, where } = fbFirestore as any;
@@ -22,7 +22,8 @@ import PlaceholderFeature from './components/Features/PlaceholderFeature';
 import Terms from './components/Legal/Terms';
 import Privacy from './components/Legal/Privacy';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
+  const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -95,6 +96,7 @@ const App: React.FC = () => {
     if (txUnsubscribeRef.current) txUnsubscribeRef.current();
     if (wrUnsubscribeRef.current) wrUnsubscribeRef.current();
     await signOut(auth);
+    navigate('/login', { replace: true });
   };
 
   const handleWithdraw = async (amount: number) => {
@@ -165,13 +167,11 @@ const App: React.FC = () => {
   }
 
   return (
-    <ToastProvider>
-      <HashRouter>
-        <div className="min-h-screen bg-slate-50 flex flex-col">
-          {currentUser && <Header onLogout={handleLogout} user={currentUser} />}
-          
-          <main className={`flex-grow ${currentUser ? 'pb-24 md:pb-0' : ''}`}>
-            <Routes>
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      {currentUser && <Header onLogout={handleLogout} user={currentUser} />}
+      
+      <main className={`flex-grow ${currentUser ? 'pb-24 md:pb-0' : ''}`}>
+        <Routes>
               <Route path="/login" element={currentUser ? <Navigate to="/dashboard" /> : <Login />} />
               <Route path="/signup" element={currentUser ? <Navigate to="/dashboard" /> : <Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -196,23 +196,47 @@ const App: React.FC = () => {
               <Route path="/settings" element={currentUser ? <Settings user={currentUser} /> : <Navigate to="/login" />} />
               <Route path="/admin" element={(currentUser?.role === 'chief' || currentUser?.role === 'dev') ? <AdminDashboard currentUser={currentUser} /> : <Navigate to="/dashboard" />} />
 
-              <Route path="/spinning" element={<PlaceholderFeature title="Spin & Win" />} />
-              <Route path="/survey" element={<PlaceholderFeature title="Paid Surveys" />} />
-              <Route path="/writing" element={<PlaceholderFeature title="Article Writing" />} />
-              <Route path="/youtube" element={<PlaceholderFeature title="YouTube Rewards" />} />
+              <Route path="/spinning" element={<PlaceholderFeature title="Spin & Win" variant="spin" />} />
+              <Route path="/survey" element={<PlaceholderFeature title="Paid Surveys" variant="surveys" />} />
+              <Route path="/writing" element={<PlaceholderFeature title="Article Writing" variant="writing" />} />
+              <Route path="/youtube" element={
+                <PlaceholderFeature
+                  title="YouTube Rewards"
+                  variant="youtube"
+                  youtubeVideos={[
+                    { title: 'Valuehub – How to earn', url: 'https://youtu.be/MBxjPb8hRws?si=gKxUD0W3qGOmsy8f' },
+                    { title: 'Getting started guide', url: 'https://youtu.be/y90R_2je0kk?si=RNhG758LYy-Zo7Kw' },
+                    { title: 'Tips and tricks', url: 'https://youtu.be/ICU-j1pItlA?si=mirlbFvLTiigY5S7' }
+                  ]}
+                />
+              } />
+
+              <Route path="/chat" element={<PlaceholderFeature title="Chat with Lonely People" variant="chat" />} />
 
               <Route path="/" element={<Navigate to={currentUser ? "/dashboard" : "/login"} />} />
-            </Routes>
-          </main>
+        </Routes>
+      </main>
 
-          <footer className={`bg-white border-t border-slate-200 py-6 text-center text-slate-500 text-sm ${currentUser ? 'hidden md:block' : ''}`}>
-            &copy; {new Date().getFullYear()} Valuehub. All rights reserved.
-          </footer>
-        </div>
-        <ToastContainer />
-      </HashRouter>
-    </ToastProvider>
+      <footer className={`bg-white border-t border-slate-200 py-6 text-center text-slate-500 text-sm ${currentUser ? 'hidden md:block' : ''}`}>
+        <p>© 2026 Valuehub. All rights reserved.</p>
+        <p className="mt-1">
+          Powered by{' '}
+          <a href="https://cosnametech.com/" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-emerald-700 font-medium">
+            Cosname Technologies
+          </a>
+        </p>
+      </footer>
+      <ToastContainer />
+    </div>
   );
 };
+
+const App: React.FC = () => (
+  <ToastProvider>
+    <HashRouter>
+      <AppContent />
+    </HashRouter>
+  </ToastProvider>
+);
 
 export default App;

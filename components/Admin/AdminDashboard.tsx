@@ -25,14 +25,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AdminTab>(isDev ? 'tickets' : 'overview');
-  
+
   // Modal state for processing withdrawal (chief only)
   const [processingWithdrawal, setProcessingWithdrawal] = useState<WithdrawalRequest | null>(null);
   const [adminNote, setAdminNote] = useState('');
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   // Announcement Form State
-  const [newAnnouncement, setNewAnnouncement] = useState({ title: '', message: '', type: 'INFO' as Announcement['type'] });
+  const [newAnnouncement, setNewAnnouncement] = useState({ title: '', message: '', type: 'INFO' as Announcement['type'], link: '' });
 
   useEffect(() => {
     const unsubs: (() => void)[] = [];
@@ -72,17 +72,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
 
   const handleCreateAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAnnouncement.title || !newAnnouncement.message) {
-      toast.error('Please fill in all announcement fields');
+    if (!newAnnouncement.title?.trim()) {
+      toast.error('Please enter a title');
       return;
     }
     try {
       await addDoc(collection(db, 'announcements'), {
-        ...newAnnouncement,
+        title: newAnnouncement.title.trim(),
+        message: newAnnouncement.message?.trim() ?? '',
+        type: newAnnouncement.type,
+        ...(newAnnouncement.link?.trim() ? { link: newAnnouncement.link.trim() } : {}),
         timestamp: Date.now(),
         active: true
       });
-      setNewAnnouncement({ title: '', message: '', type: 'INFO' });
+      setNewAnnouncement({ title: '', message: '', type: 'INFO', link: '' });
       toast.success('Announcement broadcasted to all users!');
     } catch (err) {
       toast.error('Failed to create announcement');
@@ -111,7 +114,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
   const handleUpdateWithdrawalStatus = async (status: WithdrawalStatus) => {
     if (!processingWithdrawal) return;
     setIsUpdatingStatus(true);
-    
+
     try {
       const wrRef = doc(db, 'withdrawal_requests', processingWithdrawal.id);
       const userRef = doc(db, 'users', processingWithdrawal.userId);
@@ -198,7 +201,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
   const pendingRequests = withdrawalRequests.filter(r => r.status === 'PENDING');
   const pendingRequestsValue = pendingRequests.reduce((sum, r) => sum + r.amount, 0);
   const openTicketsCount = tickets.filter(t => t.status === 'OPEN').length;
-  
+
   const systemSurplus = totalRevenue - totalWithdrawn;
   const netPosition = systemSurplus - totalUserBalance;
   const systemStatus = (() => {
@@ -236,13 +239,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
               </div>
               <h3 className="text-2xl font-black text-slate-900">Process Payout</h3>
               <p className="text-slate-500 text-sm font-medium mt-1">
-                Amount: <span className="text-slate-900 font-black">Ksh {processingWithdrawal.amount}</span> to {processingWithdrawal.phoneNumber}
+                Withdrawal Request: <span className="text-slate-900 font-black">Ksh {(processingWithdrawal.amount - WITHDRAWAL_TRANSACTION_FEE - WITHDRAWAL_MAINTENANCE_FEE).toLocaleString()}</span> to
+                <div className="relative">
+                  <span className="block text-slate-800 font-black mt-0.5">
+                    {processingWithdrawal.phoneNumber}
+                  </span>
+
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(processingWithdrawal.phoneNumber);
+                      toast.success('Phone number copied!');
+                    }}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-emerald-600 transition-colors"
+                  >
+                    <i className="fas fa-copy"></i>
+                  </button>
+                </div>
+
+
               </p>
             </div>
             <div className="space-y-6">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Internal Note / M-Pesa ID</label>
-                <input 
+                <input
                   type="text"
                   className="w-full px-5 py-4 bg-white/50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-slate-500/10 focus:border-slate-500 outline-none transition-all font-bold"
                   placeholder="e.g. M-Pesa Ref: QRT349XX"
@@ -251,7 +271,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
                 />
               </div>
               <div className="grid grid-cols-1 gap-3">
-                <button 
+                <button
                   onClick={() => handleUpdateWithdrawalStatus('COMPLETED')}
                   disabled={isUpdatingStatus}
                   className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black shadow-lg shadow-emerald-100 transition-all active:scale-95 disabled:opacity-50"
@@ -259,14 +279,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
                   Mark as Completed
                 </button>
                 <div className="grid grid-cols-2 gap-3">
-                  <button 
+                  <button
                     onClick={() => handleUpdateWithdrawalStatus('REJECTED')}
                     disabled={isUpdatingStatus}
                     className="py-3 bg-red-100 text-red-600 hover:bg-red-200 rounded-2xl font-black text-xs transition-all active:scale-95"
                   >
                     Reject & Refund
                   </button>
-                  <button 
+                  <button
                     onClick={() => setProcessingWithdrawal(null)}
                     disabled={isUpdatingStatus}
                     className="py-3 bg-slate-200/50 hover:bg-slate-200 text-slate-600 rounded-2xl font-black text-xs transition-all active:scale-95"
@@ -304,7 +324,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
             const showBadge = (isWithdrawals && pendingRequests.length > 0) || (isTickets && openTicketsCount > 0);
             const badgeCount = isWithdrawals ? pendingRequests.length : openTicketsCount;
             return (
-              <button 
+              <button
                 key={tab}
                 onClick={() => setActiveTab(tab as AdminTab)}
                 className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all relative ${activeTab === tab ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
@@ -371,9 +391,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
               </div>
 
               {/* System status & Actions Section */}
-              <div className={`rounded-[2.5rem] p-8 text-white relative overflow-hidden group ${
-                systemStatus === 'safe' ? 'bg-emerald-900' : systemStatus === 'caution' ? 'bg-amber-900' : 'bg-slate-900'
-              }`}>
+              <div className={`rounded-[2.5rem] p-8 text-white relative overflow-hidden group ${systemStatus === 'safe' ? 'bg-emerald-900' : systemStatus === 'caution' ? 'bg-amber-900' : 'bg-slate-900'
+                }`}>
                 <div className="relative z-10">
                   <h3 className="text-xl font-black mb-6 flex items-center">
                     <i className={`fas ${systemStatus === 'safe' ? 'fa-shield-halved' : 'fa-triangle-exclamation'} mr-3 ${systemStatus === 'safe' ? 'text-emerald-400' : systemStatus === 'caution' ? 'text-amber-400' : 'text-amber-400'}`}></i>
@@ -416,7 +435,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
                   </div>
                 </div>
                 <div className="absolute right-0 bottom-0 opacity-5 text-[12rem] translate-y-24 translate-x-12 pointer-events-none group-hover:rotate-6 transition-transform duration-1000">
-                   <i className="fas fa-bolt"></i>
+                  <i className="fas fa-bolt"></i>
                 </div>
               </div>
             </div>
@@ -431,11 +450,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
                 {recentTransactions.map(tx => (
                   <div key={tx.id} className="flex items-start justify-between border-b border-slate-50 pb-4 last:border-0">
                     <div className="flex items-start space-x-3">
-                      <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${
-                        tx.type === 'EARNING' ? 'bg-emerald-500' :
+                      <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${tx.type === 'EARNING' ? 'bg-emerald-500' :
                         tx.type === 'WITHDRAWAL' ? 'bg-amber-500' :
-                        tx.type === 'ACTIVATION' ? 'bg-blue-500' : 'bg-slate-300'
-                      }`}></div>
+                          tx.type === 'ACTIVATION' ? 'bg-blue-500' : 'bg-slate-300'
+                        }`}></div>
                       <div>
                         <div className="text-xs font-black text-slate-900 uppercase tracking-tight line-clamp-1">{tx.description}</div>
                         <div className="text-[10px] text-slate-400 font-medium">{new Date(tx.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
@@ -464,20 +482,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Title</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-emerald-500 font-bold"
                     placeholder="Important Update"
                     value={newAnnouncement.title}
-                    onChange={e => setNewAnnouncement({...newAnnouncement, title: e.target.value})}
+                    onChange={e => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
                   />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Priority</label>
-                  <select 
+                  <select
                     className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-emerald-500 font-bold appearance-none"
                     value={newAnnouncement.type}
-                    onChange={e => setNewAnnouncement({...newAnnouncement, type: e.target.value as any})}
+                    onChange={e => setNewAnnouncement({ ...newAnnouncement, type: e.target.value as any })}
                   >
                     <option value="INFO">Information (Emerald)</option>
                     <option value="WARNING">Warning (Amber)</option>
@@ -486,14 +504,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Message Body</label>
-                <textarea 
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Message / Description (optional)</label>
+                <textarea
                   rows={3}
                   className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-emerald-500 font-medium"
-                  placeholder="Tell users what's happening..."
+                  placeholder="Add a description if you want – or leave blank for title only"
                   value={newAnnouncement.message}
-                  onChange={e => setNewAnnouncement({...newAnnouncement, message: e.target.value})}
+                  onChange={e => setNewAnnouncement({ ...newAnnouncement, message: e.target.value })}
                 ></textarea>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Link (optional)</label>
+                <input
+                  type="url"
+                  className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-emerald-500 font-medium"
+                  placeholder="https://example.com – users can click to open"
+                  value={newAnnouncement.link}
+                  onChange={e => setNewAnnouncement({ ...newAnnouncement, link: e.target.value })}
+                />
               </div>
               <button type="submit" className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">
                 Send Notification to Everyone
@@ -502,33 +530,35 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
           </div>
 
           <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-             <div className="p-8 border-b border-slate-100 bg-slate-50/30">
-                <h3 className="font-black text-slate-900">Active Broadcasts</h3>
-             </div>
-             <table className="w-full text-left">
-                <tbody className="divide-y divide-slate-100">
-                  {announcements.length > 0 ? announcements.map(ann => (
-                    <tr key={ann.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-8 py-5">
-                        <div className="flex items-center space-x-3">
-                          <span className={`w-3 h-3 rounded-full ${ann.type === 'INFO' ? 'bg-emerald-500' : ann.type === 'WARNING' ? 'bg-amber-500' : 'bg-red-500'}`}></span>
-                          <span className="font-black text-slate-900 uppercase tracking-tight">{ann.title}</span>
-                        </div>
-                        <div className="text-slate-500 text-xs mt-1 italic leading-snug">"{ann.message.substring(0, 100)}..."</div>
-                      </td>
-                      <td className="px-8 py-5 text-right">
-                        <button onClick={() => handleDeleteAnnouncement(ann.id)} className="text-red-500 hover:text-red-700 font-black text-[10px] uppercase tracking-widest">
-                          <i className="fas fa-trash-alt mr-1"></i> Terminate
-                        </button>
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td className="p-10 text-center text-slate-400 font-black text-xs uppercase">No active announcements</td>
-                    </tr>
-                  )}
-                </tbody>
-             </table>
+            <div className="p-8 border-b border-slate-100 bg-slate-50/30">
+              <h3 className="font-black text-slate-900">Active Broadcasts</h3>
+            </div>
+            <table className="w-full text-left">
+              <tbody className="divide-y divide-slate-100">
+                {announcements.length > 0 ? announcements.map(ann => (
+                  <tr key={ann.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-8 py-5">
+                      <div className="flex items-center space-x-3">
+                        <span className={`w-3 h-3 rounded-full ${ann.type === 'INFO' ? 'bg-emerald-500' : ann.type === 'WARNING' ? 'bg-amber-500' : 'bg-red-500'}`}></span>
+                        <span className="font-black text-slate-900 uppercase tracking-tight">{ann.title}</span>
+                      </div>
+                      <div className="text-slate-500 text-xs mt-1 italic leading-snug">
+                        {ann.message ? `"${ann.message.substring(0, 80)}${ann.message.length > 80 ? '...' : ''}"` : 'Title only'}
+                      </div>
+                    </td>
+                    <td className="px-8 py-5 text-right">
+                      <button onClick={() => handleDeleteAnnouncement(ann.id)} className="text-red-500 hover:text-red-700 font-black text-[10px] uppercase tracking-widest">
+                        <i className="fas fa-trash-alt mr-1"></i> Terminate
+                      </button>
+                    </td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td className="p-10 text-center text-slate-400 font-black text-xs uppercase">No active announcements</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -559,7 +589,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
                       <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Earned: {u.totalEarnings}</div>
                     </td>
                     <td className="px-8 py-5 text-slate-600 font-bold uppercase text-[10px]">
-                      {u.referredBy ? `Invited by ${users.find(ref => ref.id === u.referredBy)?.username || 'ID:'+u.referredBy}` : 'Direct'}
+                      {u.referredBy ? `Invited by ${users.find(ref => ref.id === u.referredBy)?.username || 'ID:' + u.referredBy}` : 'Direct'}
                     </td>
                     <td className="px-8 py-5 text-right text-slate-400 font-bold text-xs">
                       {new Date(u.createdAt).toLocaleDateString()}
@@ -583,7 +613,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
               <thead>
                 <tr className="bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-widest">
                   <th className="px-8 py-5">Member & Phone</th>
-                  <th className="px-8 py-5">Request Value</th>
+                  <th className="px-8 py-5">Amount to send (M-Pesa)</th>
                   <th className="px-8 py-5">Status & Note</th>
                   <th className="px-8 py-5 text-right">Actions</th>
                 </tr>
@@ -597,22 +627,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
                       <div className="text-[10px] text-slate-400 font-medium">{new Date(req.timestamp).toLocaleString()}</div>
                     </td>
                     <td className="px-8 py-5">
-                      <div className="text-lg font-black text-slate-900 tracking-tighter">Ksh {req.amount}</div>
+                      <div className="text-lg font-black text-slate-900 tracking-tighter">Ksh {(req.amount - WITHDRAWAL_TRANSACTION_FEE - WITHDRAWAL_MAINTENANCE_FEE).toLocaleString()}</div>
+                      <div className="text-[10px] text-slate-400">Requested: Ksh {req.amount.toLocaleString()}</div>
                     </td>
                     <td className="px-8 py-5">
                       <div className="flex flex-col space-y-1">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border self-start ${
-                          req.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border self-start ${req.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border-amber-100' :
                           req.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                          'bg-red-50 text-red-600 border-red-100'
-                        }`}>
+                            'bg-red-50 text-red-600 border-red-100'
+                          }`}>
                           {req.status}
                         </span>
                       </div>
                     </td>
                     <td className="px-8 py-5 text-right">
                       {req.status === 'PENDING' || req.status === 'PROCESSING' ? (
-                        <button 
+                        <button
                           onClick={() => setProcessingWithdrawal(req)}
                           className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95"
                         >
@@ -636,60 +666,60 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
 
       {(isChief || isDev) && activeTab === 'tickets' && (
         <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden animate-slide-up">
-           <table className="w-full text-left">
-              <thead>
-                <tr className="bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-widest">
-                  <th className="px-8 py-5">Requester</th>
-                  <th className="px-8 py-5">Message</th>
-                  <th className="px-8 py-5">Status</th>
-                  <th className="px-8 py-5 text-right">Actions</th>
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-widest">
+                <th className="px-8 py-5">Requester</th>
+                <th className="px-8 py-5">Message</th>
+                <th className="px-8 py-5">Status</th>
+                <th className="px-8 py-5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-sm">
+              {tickets.length > 0 ? tickets.map(ticket => (
+                <tr key={ticket.id}>
+                  <td className="px-8 py-5">
+                    <div className="font-black text-slate-900 uppercase tracking-tight">{ticket.username}</div>
+                    <div className="text-[10px] font-black text-emerald-600">{ticket.phone}</div>
+                  </td>
+                  <td className="px-8 py-5 italic text-slate-600">"{ticket.message}"</td>
+                  <td className="px-8 py-5">
+                    <span className={`text-[10px] font-black uppercase ${ticket.status === 'OPEN' ? 'text-emerald-600' : 'text-slate-300'}`}>
+                      {ticket.status}
+                    </span>
+                  </td>
+                  <td className="px-8 py-5 text-right">
+                    <button onClick={() => handleToggleTicketStatus(ticket.id, ticket.status)} className="text-[10px] font-black uppercase text-emerald-600 hover:underline transition-all">Toggle State</button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
-                {tickets.length > 0 ? tickets.map(ticket => (
-                  <tr key={ticket.id}>
-                    <td className="px-8 py-5">
-                      <div className="font-black text-slate-900 uppercase tracking-tight">{ticket.username}</div>
-                      <div className="text-[10px] font-black text-emerald-600">{ticket.phone}</div>
-                    </td>
-                    <td className="px-8 py-5 italic text-slate-600">"{ticket.message}"</td>
-                    <td className="px-8 py-5">
-                      <span className={`text-[10px] font-black uppercase ${ticket.status === 'OPEN' ? 'text-emerald-600' : 'text-slate-300'}`}>
-                        {ticket.status}
-                      </span>
-                    </td>
-                    <td className="px-8 py-5 text-right">
-                      <button onClick={() => handleToggleTicketStatus(ticket.id, ticket.status)} className="text-[10px] font-black uppercase text-emerald-600 hover:underline transition-all">Toggle State</button>
-                    </td>
-                  </tr>
-                )) : (
-                  <tr>
-                    <td colSpan={4} className="p-20 text-center text-slate-400 font-black text-xs uppercase">No Support Tickets</td>
-                  </tr>
-                )}
-              </tbody>
-           </table>
+              )) : (
+                <tr>
+                  <td colSpan={4} className="p-20 text-center text-slate-400 font-black text-xs uppercase">No Support Tickets</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       )}
 
       {isChief && activeTab === 'transactions' && (
         <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden animate-slide-up">
-           <table className="w-full text-left">
-              <tbody className="divide-y divide-slate-100 text-sm">
-                {adminVisibleTransactions.map(tx => (
-                  <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-8 py-5">
-                       <div className="font-black text-slate-900 uppercase tracking-tight">{tx.description}</div>
-                       <div className="text-slate-400 text-[10px] font-black uppercase tracking-widest">{tx.type}</div>
-                    </td>
-                    <td className={`px-8 py-5 font-black text-base tracking-tighter ${tx.amount > 0 ? 'text-emerald-600' : tx.amount < 0 ? 'text-red-600' : 'text-slate-400'}`}>
-                      {tx.amount > 0 ? '+' : ''}{tx.amount} KSH
-                    </td>
-                    <td className="px-8 py-5 text-right text-slate-400 text-xs font-bold">{new Date(tx.timestamp).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-           </table>
+          <table className="w-full text-left">
+            <tbody className="divide-y divide-slate-100 text-sm">
+              {adminVisibleTransactions.map(tx => (
+                <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-8 py-5">
+                    <div className="font-black text-slate-900 uppercase tracking-tight">{tx.description}</div>
+                    <div className="text-slate-400 text-[10px] font-black uppercase tracking-widest">{tx.type}</div>
+                  </td>
+                  <td className={`px-8 py-5 font-black text-base tracking-tighter ${tx.amount > 0 ? 'text-emerald-600' : tx.amount < 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                    {tx.amount > 0 ? '+' : ''}{tx.amount} KSH
+                  </td>
+                  <td className="px-8 py-5 text-right text-slate-400 text-xs font-bold">{new Date(tx.timestamp).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

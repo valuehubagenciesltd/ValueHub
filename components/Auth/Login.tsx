@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 // Fix: Use namespace import to bypass environment-specific type resolution issues with named exports
 import * as ReactRouterDOM from 'react-router-dom';
 const { Link, useNavigate } = ReactRouterDOM as any;
-// Fix: Use namespace import for firestore to bypass environment-specific type resolution issues with named exports
 import * as fbFirestore from 'firebase/firestore';
 const { doc, updateDoc } = fbFirestore as any;
 import { auth, db, signInWithEmailAndPassword } from '../../firebase';

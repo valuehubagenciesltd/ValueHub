@@ -28,6 +28,7 @@ export interface Announcement {
   type: 'INFO' | 'WARNING' | 'CRITICAL';
   timestamp: number;
   active: boolean;
+  link?: string; // Optional URL – users can click to open in new tab
 }
 
 export interface Transaction {

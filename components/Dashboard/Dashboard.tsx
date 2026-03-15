@@ -14,6 +14,20 @@ interface DashboardProps {
   onWithdraw: (amount: number) => void;
 }
 
+const urlRegex = /(https?:\/\/[^\s]+)/g;
+const linkifyMessage = (message: string): React.ReactNode => {
+  const parts = message.split(urlRegex);
+  return parts.map((part, i) =>
+    part.match(urlRegex) ? (
+      <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="underline font-semibold hover:opacity-80">
+        {part}
+      </a>
+    ) : (
+      part
+    )
+  );
+};
+
 const Dashboard: React.FC<DashboardProps> = ({ user, transactions, withdrawalRequests, onWithdraw }) => {
   const toast = useToast();
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
@@ -30,10 +44,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, transactions, withdrawalReq
     const annQuery = query(collection(db, 'announcements'), where('active', '==', true));
     const unsubscribe = onSnapshot(annQuery, (snapshot) => {
       const anns = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement));
-      
+
       // Sort client-side by timestamp descending
       anns.sort((a, b) => b.timestamp - a.timestamp);
-      
+
       // Find the first announcement that the user hasn't dismissed yet
       const undismissed = anns.find(ann => !user.dismissedAnnouncements?.includes(ann.id));
       setActiveAnnouncement(undismissed || null);
@@ -91,7 +105,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, transactions, withdrawalReq
       toast.error(`Minimum is Ksh ${MIN_WITHDRAWAL}`);
       return;
     }
-    
+
     try {
       await onWithdraw(withdrawAmount);
       toast.success('Withdrawal request submitted! Admin will review it shortly.');
@@ -108,32 +122,53 @@ const Dashboard: React.FC<DashboardProps> = ({ user, transactions, withdrawalReq
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-slide-up">
-      
+
       {/* Announcement Banner (Admin Briefing) - Replaces the Modal */}
       {activeAnnouncement && (
-        <div className={`mb-8 p-6 rounded-[2rem] border transition-all duration-300 relative overflow-hidden ${
-          activeAnnouncement.type === 'INFO' ? 'bg-emerald-50/80 border-emerald-100 text-emerald-900' :
-          activeAnnouncement.type === 'WARNING' ? 'bg-amber-50/80 border-amber-100 text-amber-900' :
-          'bg-red-50/80 border-red-100 text-red-900'
-        }`}>
+        <div className={`mb-8 p-6 pt-12 rounded-[2rem] border transition-all duration-300 relative overflow-hidden ${activeAnnouncement.type === 'INFO' ? 'bg-emerald-50/80 border-emerald-100 text-emerald-900' :
+            activeAnnouncement.type === 'WARNING' ? 'bg-amber-50/80 border-amber-100 text-amber-900' :
+              'bg-red-50/80 border-red-100 text-red-900'
+          }`}>
+          <button
+            type="button"
+            onClick={handleDismissAnnouncement}
+            className="absolute top-3 right-3 w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:bg-black/10 hover:text-slate-800 transition-colors font-bold text-lg leading-none"
+            title="Dismiss"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
           <div className="flex items-start gap-4">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 ${
-              activeAnnouncement.type === 'INFO' ? 'bg-emerald-600 text-white' :
-              activeAnnouncement.type === 'WARNING' ? 'bg-amber-500 text-white' :
-              'bg-red-600 text-white'
-            }`}>
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 ${activeAnnouncement.type === 'INFO' ? 'bg-emerald-600 text-white' :
+                activeAnnouncement.type === 'WARNING' ? 'bg-amber-500 text-white' :
+                  'bg-red-600 text-white'
+              }`}>
               <i className={`fas ${activeAnnouncement.type === 'INFO' ? 'fa-bullhorn' : 'fa-triangle-exclamation'}`}></i>
             </div>
             <div className="flex-grow pr-8">
-              <h3 className="font-black text-sm uppercase tracking-widest mb-1 opacity-80">Admin Briefing</h3>
               <h4 className="text-lg font-black tracking-tight mb-2">{activeAnnouncement.title}</h4>
-              <p className={`text-sm font-medium leading-relaxed opacity-90 transition-all ${isAnnouncementExpanded ? '' : 'line-clamp-3'}`}>
-                {activeAnnouncement.message}
-              </p>
-              
+              {activeAnnouncement.message ? (
+                <p className={`text-sm font-medium leading-relaxed opacity-90 transition-all ${isAnnouncementExpanded ? '' : 'line-clamp-3'}`}>
+                  {linkifyMessage(activeAnnouncement.message)}
+                </p>
+              ) : null}
+
               <div className="mt-4 flex flex-wrap items-center gap-4">
-                {activeAnnouncement.message.length > 150 && (
-                  <button 
+                {activeAnnouncement.link && (
+                  <a
+                    href={activeAnnouncement.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`text-xs font-black uppercase tracking-widest px-4 py-2 rounded-xl border transition-all inline-flex items-center gap-2 ${activeAnnouncement.type === 'INFO' ? 'bg-emerald-600/10 border-emerald-200 hover:bg-emerald-600 hover:text-white text-emerald-800' :
+                        activeAnnouncement.type === 'WARNING' ? 'bg-amber-500/10 border-amber-200 hover:bg-amber-500 hover:text-white text-amber-800' :
+                          'bg-red-600/10 border-red-200 hover:bg-red-600 hover:text-white text-red-800'
+                      }`}
+                  >
+                    <i className="fas fa-external-link-alt"></i> Visit link
+                  </a>
+                )}
+                {activeAnnouncement.message && activeAnnouncement.message.length > 150 && (
+                  <button
                     onClick={() => setIsAnnouncementExpanded(!isAnnouncementExpanded)}
                     className="text-xs font-black uppercase tracking-widest flex items-center hover:opacity-70 transition-opacity"
                   >
@@ -144,19 +179,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user, transactions, withdrawalReq
                     )}
                   </button>
                 )}
-                <button 
-                  onClick={handleDismissAnnouncement}
-                  className={`text-xs font-black uppercase tracking-widest px-4 py-2 rounded-xl border transition-all ${
-                    activeAnnouncement.type === 'INFO' ? 'bg-emerald-600/10 border-emerald-200 hover:bg-emerald-600 hover:text-white' :
-                    activeAnnouncement.type === 'WARNING' ? 'bg-amber-500/10 border-amber-200 hover:bg-amber-500 hover:text-white' :
-                    'bg-red-600/10 border-red-200 hover:bg-red-600 hover:text-white'
-                  }`}
-                >
-                  Clear Briefing
-                </button>
               </div>
+
+              <p className="mt-4 text-xs font-bold opacity-70 flex items-center gap-1">
+                <i className="fa-solid fa-user"></i>
+                By Admin
+              </p>
             </div>
-            
+
             {/* Visual background icon decoration */}
             <div className="absolute -right-4 -top-4 opacity-5 text-8xl pointer-events-none">
               <i className={`fas ${activeAnnouncement.type === 'INFO' ? 'fa-bullhorn' : 'fa-triangle-exclamation'}`}></i>
@@ -181,7 +211,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, transactions, withdrawalReq
             </div>
             <div className="text-3xl font-extrabold text-slate-900">Ksh {user.balance.toLocaleString()}</div>
           </div>
-          <button 
+          <button
             onClick={handleWithdrawClick}
             className="mt-6 w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold transition-all shadow-lg shadow-emerald-100 active:scale-95"
           >
@@ -249,11 +279,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, transactions, withdrawalReq
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 flex-grow border border-white/20 font-mono text-xs flex items-center">
               <span className="opacity-90 select-all leading-relaxed break-all">{referralLink}</span>
             </div>
-            <button 
+            <button
               onClick={handleCopyLink}
-              className={`px-8 py-4 rounded-2xl font-black transition-all whitespace-nowrap shadow-xl flex items-center justify-center ${
-                isCopying ? 'bg-white text-emerald-900 scale-95' : 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-emerald-500/20 active:scale-95'
-              }`}
+              className={`px-8 py-4 rounded-2xl font-black transition-all whitespace-nowrap shadow-xl flex items-center justify-center ${isCopying ? 'bg-white text-emerald-900 scale-95' : 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-emerald-500/20 active:scale-95'
+                }`}
             >
               {isCopying ? <><i className="fas fa-check mr-2"></i>Link Copied</> : <><i className="fas fa-copy mr-2"></i>Copy Link</>}
             </button>
@@ -283,24 +312,22 @@ const Dashboard: React.FC<DashboardProps> = ({ user, transactions, withdrawalReq
                     <td className="px-6 py-4">
                       <div className="font-bold text-slate-900 uppercase tracking-tight">{tx.description}</div>
                       <div className="text-slate-400 text-[10px] font-bold uppercase tracking-tighter flex items-center">
-                         <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                           tx.type === 'EARNING' ? 'bg-emerald-400' :
-                           tx.type === 'WITHDRAWAL' ? 'bg-amber-400' :
-                           tx.type === 'REFERRAL_BONUS' ? 'bg-blue-400' :
-                           'bg-slate-400'
-                         }`}></span>
-                         {tx.type} • ID: {tx.id.substring(0,6)}
+                        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${tx.type === 'EARNING' ? 'bg-emerald-400' :
+                            tx.type === 'WITHDRAWAL' ? 'bg-amber-400' :
+                              tx.type === 'REFERRAL_BONUS' ? 'bg-blue-400' :
+                                'bg-slate-400'
+                          }`}></span>
+                        {tx.type} • ID: {tx.id.substring(0, 6)}
                       </div>
                     </td>
                     <td className={`px-6 py-4 font-black ${tx.amount > 0 ? 'text-emerald-600' : tx.amount < 0 ? 'text-red-500' : 'text-slate-400'}`}>
                       {tx.amount === 0 ? '--' : (tx.amount > 0 ? `+${tx.amount}` : tx.amount)} <span className="text-[10px]">KSH</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter ${
-                        tx.amount > 0 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 
-                        tx.amount < 0 ? 'bg-red-50 text-red-800 border border-red-100' :
-                        'bg-blue-50 text-blue-800 border border-blue-100'
-                      }`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter ${tx.amount > 0 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                          tx.amount < 0 ? 'bg-red-50 text-red-800 border border-red-100' :
+                            'bg-blue-50 text-blue-800 border border-blue-100'
+                        }`}>
                         {tx.amount > 0 ? 'Inflow' : tx.amount < 0 ? 'Deduction' : 'Verified'}
                       </span>
                     </td>
@@ -323,12 +350,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, transactions, withdrawalReq
       </div>
 
       {isWithdrawModalOpen && (
-        <div 
+        <div
           ref={withdrawModalRef}
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md transition-opacity"
           onClick={() => setIsWithdrawModalOpen(false)}
         >
-          <div 
+          <div
             className="relative w-full max-w-md overflow-hidden rounded-[2rem] bg-white shadow-2xl shadow-slate-900/20 ring-1 ring-slate-200/80"
             onClick={(e) => e.stopPropagation()}
           >

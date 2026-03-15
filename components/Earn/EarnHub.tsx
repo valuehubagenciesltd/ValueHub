@@ -39,6 +39,15 @@ const EARNING_METHODS = [
     path: '/youtube',
     color: 'red',
     reward: 'Passive Income'
+  },
+  {
+    id: 'chat',
+    title: 'Chat with Lonely People',
+    description: 'Do you know you can earn by chatting with people? Connect with others, have real conversations, and get rewarded. Make someone\'s day and grow your balance.',
+    icon: 'fa-comments',
+    path: '/chat',
+    color: 'amber',
+    reward: 'Coming soon'
   }
 ];
 
@@ -63,6 +72,7 @@ const EarnHub: React.FC = () => {
                   method.color === 'emerald' ? 'bg-emerald-50 text-emerald-600 shadow-emerald-100' :
                   method.color === 'blue' ? 'bg-blue-50 text-blue-600 shadow-blue-100' :
                   method.color === 'purple' ? 'bg-purple-50 text-purple-600 shadow-purple-100' :
+                  method.color === 'amber' ? 'bg-amber-50 text-amber-600 shadow-amber-100' :
                   'bg-red-50 text-red-600 shadow-red-100'
                 }`}>
                   <i className={`fas ${method.icon}`}></i>
@@ -71,6 +81,7 @@ const EarnHub: React.FC = () => {
                   method.color === 'emerald' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
                   method.color === 'blue' ? 'bg-blue-50 text-blue-700 border-blue-100' :
                   method.color === 'purple' ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                  method.color === 'amber' ? 'bg-amber-50 text-amber-700 border-amber-100' :
                   'bg-red-50 text-red-700 border-red-100'
                 }`}>
                   {method.reward}
